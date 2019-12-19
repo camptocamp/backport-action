@@ -1,107 +1,160 @@
-#!/bin/bash
-set -e
-set -o pipefail
+#!/usr/bin/env python3
 
-fail() {
-  local message=$1
+import base64
+import json
+import os
+import re
+import sys
+import traceback
+from subprocess import PIPE, CalledProcessError, check_call, check_output
 
-  local comment="{\
-    \"body\": \"${message}\"
-  }"
+import requests
 
-  local comments=$(jq --raw-output .pull_request._links.comments.href "$GITHUB_EVENT_PATH")
+event = None
+auth_header = "Bearer {}".format(os.environ["INPUT_TOKEN"])
 
-  curl -XPOST -fsSL \
-    --output /dev/null \
-    -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "${comment}" \
-    ${comments}
 
-  exit 1
-}
+def fail(message):
+    responce = requests.post(
+        event["pull_request"]["_links"]["comments"]["href"],
+        json={"body": message},
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": auth_header,
+            "Content-Type": "application/json",
+        },
+    )
+    if not responce.ok:
+        print(responce.text)
 
-backport() {
-  local number=$1
-  local branch=$2
 
-  echo "::debug::Backporting pull request #${number} to branch ${branch}"
+def backport(number, branch):
+    print("::debug::Backporting pull request #{} to branch {}".format(number, branch))
 
-  local repository=$(jq --raw-output .repository.clone_url "$GITHUB_EVENT_PATH")
-  local backport_branch="backport/${number}-to-${branch}"
-  local merge_sha=$(jq --raw-output .pull_request.merge_commit_sha "$GITHUB_EVENT_PATH")
-  local auth=$(tmp=$(echo -n x-access-token:${INPUT_TOKEN}|base64); echo -n ${tmp/$'\n'/});
+    repository = event["repository"]["clone_url"]
+    backport_branch = "backport/{}-to-{}".format(number, branch)
 
-  git clone --no-tags -b ${branch} ${repository} "${GITHUB_WORKSPACE}"
-  (
-    cd "${GITHUB_WORKSPACE}";
-    git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
-    git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
-    set +e
-    git checkout -b ${backport_branch} || fail "Unable to checkout branch named \'${branch}\', you might need to create it or use a different label.";
-    git cherry-pick --mainline 1 ${merge_sha} || fail "Unable to cherry-pick commit ${merge_sha} on top of branch \`${branch}\`.\n\nThis pull request needs to be backported manually.";
-    git -c "http.extraheader=Authorization: basic ${auth}" push --set-upstream origin ${backport_branch} || fail "Unable to push the backported branch, did you try to backport the same PR twice without deleting the ${backport_branch} branch?";
-    set -e
-  )
+    responce = requests.get(
+        event["pull_request"]["_links"]["commits"]["href"],
+        headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+    )
+    if not responce.ok:
+        print(responce.text)
+        raise Exception(responce.text)
+    commits_sha = [c["sha"] for c in responce.json()]
 
-  local title=$(jq --raw-output .pull_request.title "$GITHUB_EVENT_PATH")
-  local pull_request_title="[Backport ${branch}] ${title}"
-  local pull_request_body="Backport of #${number}"
-  local pull_request="{\
-    \"title\": \"${pull_request_title}\", \
-    \"body\": \"${pull_request_body}\", \
-    \"head\": \"${backport_branch}\", \
-    \"base\": \"${branch}\" \
-  }"
+    auth = "http.extraheader=Authorization: basic {}".format(
+        base64.b64encode(("x-access-token:" + os.environ["INPUT_TOKEN"]).encode()).decode()
+    )
 
-  local pulls=$(tmp=$(jq --raw-output .repository.pulls_url "$GITHUB_EVENT_PATH"); echo "${tmp%{*}")
+    check_call(["git", "clone", "-c", auth, repository, os.environ["GITHUB_WORKSPACE"]])
+    check_call(["git", "checkout", branch], cwd=os.environ["GITHUB_WORKSPACE"])
+    check_call(["git", "checkout", "-b", backport_branch], cwd=os.environ["GITHUB_WORKSPACE"])
+    for commit_sha in commits_sha:
+        try:
+            check_call(
+                [
+                    "git",
+                    "config",
+                    "--global",
+                    "user.email",
+                    check_output(["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha]),
+                ]
+            )
+            check_call(
+                [
+                    "git",
+                    "config",
+                    "--global",
+                    "user.name",
+                    check_output(["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha]),
+                ]
+            )
+            check_output(["git", "cherry-pick", commit_sha], cwd=os.environ["GITHUB_WORKSPACE"], stderr=PIPE)
+        except CalledProcessError as e:
+            fail(
+                "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
+                    branch, commits_sha, e.stderr, e.stdout
+                )
+            )
+            return
+    check_call(
+        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch],
+        cwd=os.environ["GITHUB_WORKSPACE"],
+    )
 
-  curl -XPOST -fsSL \
-    --output /dev/null \
-    -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "${pull_request}" \
-    ${pulls}
-}
+    title = event["pull_request"]["title"]
+    pull_request_title = "[Backport {}] {}".format(branch, title)
+    pull_request_body = "Backport of #{}".format(number)
+    pull_request = {
+        "title": pull_request_title,
+        "body": pull_request_body,
+        "head": backport_branch,
+        "base": branch,
+    }
 
-delete() {
-  local ref=$1
-  local refs=$(tmp=$(jq --raw-output .pull_request.head.repo.git_refs_url "$GITHUB_EVENT_PATH"); echo "${tmp%{*}")
+    requests.post(
+        event["repository"]["url"] + "/pulls",
+        json=pull_request,
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": auth_header,
+            "Content-Type": "application/json",
+        },
+    )
+    if not responce.ok:
+        print(responce.text)
+        raise Exception(responce.text)
 
-  curl -XDELETE -fsSL \
-    --output /dev/null \
-    -H 'Accept: application/vnd.github.v3+json' \
-    -H "Authorization: Bearer ${INPUT_TOKEN}" \
-    "$refs/$ref"
-}
 
-main() {
-  local number=$(jq --raw-output .number "$GITHUB_EVENT_PATH")
-  local state=$(jq --raw-output .pull_request.state "$GITHUB_EVENT_PATH")
-  local login=$(jq --raw-output .pull_request.user.login "$GITHUB_EVENT_PATH")
-  local title=$(jq --raw-output .pull_request.title "$GITHUB_EVENT_PATH")
-  local merged=$(jq --raw-output .pull_request.merged "$GITHUB_EVENT_PATH")
-  local labels=$(jq --raw-output .pull_request.labels[].name "$GITHUB_EVENT_PATH")
+def delete(ref):
+    refs = event["pull_request"]["head"]["repo"]["git_refs_url"]
 
-  if [[ "$state" == "closed" && "$login" == "github-actions[bot]" && "$title" == '[Backport '* ]]; then
-    delete "head/$(jq --raw-output .pull_request.head.ref "$GITHUB_EVENT_PATH")"
-    exit 0
-  fi
+    responce = requests.delete(
+        "{}/{}".format(refs, ref),
+        event["repository"]["pulls_url"],
+        headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+    )
+    if not responce.ok:
+        print(responce.text)
+        fail("Fail to delete {}:\n{}".format(ref, responce.text))
+        sys.exit(1)
 
-  if [[ "$merged" != "true" ]]; then
-    exit 0
-  fi
 
-  IFS=$'\n'
-  for label in ${labels}; do
-    # label needs to be `backport <name of the branch>`
-    if [[ "${label}" == 'backport '* ]]; then
-      local branch=${label#* }
-      backport ${number} ${branch}
-    fi
-  done
-}
+def main():
+    global event
+    with open(os.environ["GITHUB_EVENT_PATH"]) as event_file:
+        event = json.loads(event_file.read())
+    print("event")
+    print(event)
+    print()
+    number = event["number"]
+    state = event["pull_request"]["state"]
+    login = event["pull_request"]["user"]["login"]
+    merged = event["pull_request"]["merged"]
+    labels = [l["name"] for l in event["pull_request"]["labels"]]
 
-main "$@"
+    if state == "closed" and login == "github-actions[bot]":
+        delete(event["pull_request"]["head"]["ref"])
+        sys.exit(0)
+
+    if not merged:
+        sys.exit(0)
+
+    label_re = re.compile(r"backport (.*)")
+    for label in labels:
+        try:
+            # label needs to be `backport <name of the branch>`
+            label_match = label_re.match(label)
+            if label_match is not None:
+                backport(number, label_match.group(1))
+        except Exception:
+            print("".join(traceback.format_exception(*sys.exc_info())))
+            fail(
+                "Error on backporting to branch {}, see Docker Hub actions for mor information.".format(
+                    label_match.group(1)
+                )
+            )
+
+
+main()

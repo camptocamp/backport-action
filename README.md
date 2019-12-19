@@ -4,7 +4,7 @@ GitHub Action to backport pull requests.
 
 Put this in your `.github/workflows/backport.yml`:
 
-```yml
+```yaml
 name: Backport
 
 on:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Backport closed pull request
     steps:
-    - uses: syndesisio/backport-action@v1
+    - uses: sbrunner/backport-action@v1
 ```
 
 And for each pull request that needs to be backported to branch `<branch>` add a `backport <branch>` label on the pull request.
