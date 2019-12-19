@@ -47,10 +47,17 @@ def backport(number, branch):
         base64.b64encode(("x-access-token:" + os.environ["INPUT_TOKEN"]).encode()).decode()
     )
 
-    check_call(["git", "clone", "-c", auth, repository, os.environ["GITHUB_WORKSPACE"]])
-    check_call(["git", "checkout", branch], cwd=os.environ["GITHUB_WORKSPACE"])
-    check_call(["git", "checkout", "-b", backport_branch], cwd=os.environ["GITHUB_WORKSPACE"])
+    workspace = os.environ["GITHUB_WORKSPACE"]
+    if not os.path.exists(workspace) or not len(os.listdir(workspace)):
+        check_call(["git", "clone", "-c", auth, repository, workspace])
+    check_call(["git", "checkout", branch], cwd=workspace)
+    check_call(["git", "checkout", "-b", backport_branch], cwd=workspace)
+    failed = False
+    commands = []
+    error = None
     for commit_sha in commits_sha:
+        if failed:
+            commands.append("git cherry-pick " + commit_sha)
         try:
             check_call(
                 [
@@ -58,8 +65,12 @@ def backport(number, branch):
                     "config",
                     "--global",
                     "user.email",
-                    check_output(["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha]),
-                ]
+                    check_output(
+                        ["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha],
+                        cwd=workspace,
+                    ),
+                ],
+                cwd=workspace,
             )
             check_call(
                 [
@@ -67,25 +78,35 @@ def backport(number, branch):
                     "config",
                     "--global",
                     "user.name",
-                    check_output(["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha]),
-                ]
+                    check_output(
+                        ["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha],
+                        cwd=workspace,
+                    ),
+                ],
+                cwd=workspace,
             )
-            check_output(["git", "cherry-pick", commit_sha], cwd=os.environ["GITHUB_WORKSPACE"], stderr=PIPE)
+            check_output(["git", "cherry-pick", commit_sha], cwd=workspace, stderr=PIPE)
         except CalledProcessError as e:
-            fail(
-                "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
-                    branch, commits_sha, e.stderr, e.stdout
-                )
+            failed = True
+            error = "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
+                branch, commits_sha, e.stderr, e.stdout
             )
-            return
+            commands.append("git fetch")
+            commands.append("git checkout " + backport_branch)
+            commands.append("git cherry-pick " + commit_sha)
+            check_call(["git", "reset", "--hard",], cwd=workspace)
     check_call(
-        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch],
-        cwd=os.environ["GITHUB_WORKSPACE"],
+        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=workspace,
     )
+    if failed:
+        commands.append("git push origin " + backport_branch)
+        fail("{}\n\nto continue do:\n{}\n\nAnd do the pull request (if needed).".format(error, "\n".join(commands)))
 
     title = event["pull_request"]["title"]
     pull_request_title = "[Backport {}] {}".format(branch, title)
     pull_request_body = "Backport of #{}".format(number)
+    if failed:
+        pull_request_body += "\n\nError on cherry picking, to continue do:\n{}".format("\n".join(commands))
     pull_request = {
         "title": pull_request_title,
         "body": pull_request_body,
@@ -93,7 +114,7 @@ def backport(number, branch):
         "base": branch,
     }
 
-    requests.post(
+    responce = requests.post(
         event["repository"]["url"] + "/pulls",
         json=pull_request,
         headers={
@@ -104,7 +125,6 @@ def backport(number, branch):
     )
     if not responce.ok:
         print(responce.text)
-        raise Exception(responce.text)
 
 
 def delete(ref):
