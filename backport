@@ -112,6 +112,7 @@ def backport(number, branch):
         "body": pull_request_body,
         "head": backport_branch,
         "base": branch,
+        "maintainer_can_modify": True,
     }
 
     responce = requests.post(
