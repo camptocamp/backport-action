@@ -146,7 +146,7 @@ def main():
     global event
     with open(os.environ["GITHUB_EVENT_PATH"]) as event_file:
         event = json.loads(event_file.read())
-    print("event")
+    print("Event")
     print(event)
     print()
     number = event["number"]
@@ -156,10 +156,12 @@ def main():
     labels = [l["name"] for l in event["pull_request"]["labels"]]
 
     if state == "closed" and login == "github-actions[bot]":
+        print("Delete branch")
         delete(event["pull_request"]["head"]["ref"])
         sys.exit(0)
 
     if not merged:
+        print("Pull request not merged")
         sys.exit(0)
 
     label_re = re.compile(r"backport (.*)")
@@ -168,6 +170,7 @@ def main():
             # label needs to be `backport <name of the branch>`
             label_match = label_re.match(label)
             if label_match is not None:
+                print("Backport to branch " + label)
                 backport(number, label_match.group(1))
         except Exception:
             print("".join(traceback.format_exception(*sys.exc_info())))
