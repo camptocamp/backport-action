@@ -144,7 +144,7 @@ def delete(ref):
 
 def main():
     global event
-    with open(os.environ["GITHUB_EVENT_PATH"]) as event_file:
+    with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
         event = json.loads(event_file.read())
     print("Event")
     print(event)
