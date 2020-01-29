@@ -129,10 +129,10 @@ def backport(number, branch):
 
 
 def delete(ref):
-    refs = event["pull_request"]["head"]["repo"]["git_refs_url"]
+    refs = event["repository"]["url"]
 
     responce = requests.delete(
-        "{}/{}".format(refs, ref),
+        "{}/git/refs/head/{}".format(refs, ref),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
