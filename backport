@@ -133,7 +133,6 @@ def delete(ref):
 
     responce = requests.delete(
         "{}/{}".format(refs, ref),
-        event["repository"]["pulls_url"],
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
