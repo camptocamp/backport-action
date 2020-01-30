@@ -34,6 +34,19 @@ def backport(number, branch):
     repository = event["repository"]["clone_url"]
     backport_branch = "backport/{}-to-{}".format(number, branch)
 
+    refs = event["repository"]["url"]
+    responce = requests.get(
+        "{}/git/ref/heads/{}".format(refs, backport_branch),
+        headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+    )
+    if responce.ok:
+        print("The branch {} allready exists.")
+        return
+    elif responce.status_code != 404:
+        print(responce.text)
+        fail("Error getting the branch {}:\n{}".format(ref, responce.text))
+        sys.exit(1)
+
     responce = requests.get(
         event["pull_request"]["_links"]["commits"]["href"],
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
