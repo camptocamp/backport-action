@@ -47,14 +47,26 @@ def backport(number, branch):
         fail("Error getting the branch {}:\n{}".format(ref, responce.text))
         sys.exit(1)
 
+    merge_commit_sha = event["pull_request"]["merge_commit_sha"]
+
     responce = requests.get(
-        event["pull_request"]["_links"]["commits"]["href"],
+        merge_commit_sha=event["pull_request"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
         print(responce.text)
         raise Exception(responce.text)
-    commits_sha = [c["sha"] for c in responce.json()]
+    if len(responce.json()["parents"]) == 1:
+        commits_sha = [merge_commit_sha]
+    else:
+        responce = requests.get(
+            event["pull_request"]["_links"]["commits"]["href"],
+            headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+        )
+        if not responce.ok:
+            print(responce.text)
+            raise Exception(responce.text)
+        commits_sha = [c["sha"] for c in responce.json()]
 
     auth = "http.extraheader=Authorization: basic {}".format(
         base64.b64encode(("x-access-token:" + os.environ["INPUT_TOKEN"]).encode()).decode()
@@ -114,7 +126,11 @@ def backport(number, branch):
     )
     if failed:
         commands.append("git push origin " + backport_branch)
-        fail("{}\n\nto continue do:\n{}\n\nAnd do the pull request (if needed).".format(error, "\n".join(commands)))
+        fail(
+            "{}\n\nto continue do:\n{}\n\nAnd do the pull request (if needed).".format(
+                error, "\n".join(commands)
+            )
+        )
 
     title = event["pull_request"]["title"]
     pull_request_title = "[Backport {}] {}".format(branch, title)
@@ -140,6 +156,7 @@ def backport(number, branch):
     )
     if not responce.ok:
         print(responce.text)
+
 
 def delete(ref):
     refs = event["repository"]["url"]
