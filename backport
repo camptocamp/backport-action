@@ -51,7 +51,7 @@ def backport(number, branch):
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
 
     responce = requests.get(
-        merge_commit_sha=event["repository"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
+        event["repository"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
