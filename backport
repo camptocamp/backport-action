@@ -42,7 +42,8 @@ def backport(number, branch):
     if responce.ok:
         print("The branch {} allready exists.")
         return
-    elif responce.status_code != 404:
+
+    if responce.status_code != 404:
         print(responce.text)
         fail("Error getting the branch {}:\n{}".format(ref, responce.text))
         sys.exit(1)
@@ -50,7 +51,7 @@ def backport(number, branch):
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
 
     responce = requests.get(
-        merge_commit_sha=event["pull_request"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
+        merge_commit_sha=event["repository"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
@@ -73,7 +74,7 @@ def backport(number, branch):
     )
 
     workspace = os.environ["GITHUB_WORKSPACE"]
-    if not os.path.exists(workspace) or not len(os.listdir(workspace)):
+    if not os.path.exists(workspace) or not os.listdir(workspace):
         check_call(["git", "clone", "-c", auth, repository, workspace])
     check_call(["git", "checkout", branch], cwd=workspace)
     check_call(["git", "checkout", "-b", backport_branch], cwd=workspace)
@@ -205,7 +206,7 @@ def main():
         print("Pull request not merged")
         sys.exit(0)
 
-    label_re = re.compile(r"backport (.*)")
+    label_re = re.compile(r"backport (.+)")
     for label in labels:
         try:
             # label needs to be `backport <name of the branch>`
@@ -214,7 +215,7 @@ def main():
                 print("Backport to branch " + label)
                 backport(number, label_match.group(1))
         except Exception:
-            print("".join(traceback.format_exception(*sys.exc_info())))
+            traceback.print_exception(*sys.exc_info())
             fail(
                 "Error on backporting to branch {}, see Docker Hub actions for more information.".format(
                     label_match.group(1)
