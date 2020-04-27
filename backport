@@ -134,7 +134,7 @@ def backport(number, branch):
                 )
             )
         check_call(
-            ["git", "app", "BACKPORT_TODO"], cwd=workspace,
+            ["git", "add", "BACKPORT_TODO"], cwd=workspace,
         )
         check_call(
             ["git", "commit", "--message=Add instructions to finish the backport"], cwd=workspace,
