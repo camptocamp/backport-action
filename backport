@@ -123,9 +123,6 @@ def backport(number, branch):
                 commands.append("git reset --hard HEAD^")
                 commands.append("git cherry-pick " + commit_sha)
                 check_call(["git", "reset", "--hard",], cwd=workspace)
-    check_call(
-        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=workspace,
-    )
     if failed:
         with open("BACKPORT_TODO", "w") as f:
             f.write(
@@ -139,6 +136,10 @@ def backport(number, branch):
         check_call(
             ["git", "commit", "--message=Add instructions to finish the backport"], cwd=workspace,
         )
+    check_call(
+        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=workspace,
+    )
+    if failed:
         commands.append("git push origin " + backport_branch)
         fail(
             "{}\n\nto continue do:\n{}\n\nAnd do the pull request (if needed).".format(
