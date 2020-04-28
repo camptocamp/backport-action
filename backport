@@ -136,8 +136,6 @@ def backport(number, branch):
     check_call(
         ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=workspace,
     )
-    if failed:
-        fail("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
 
     title = event["pull_request"]["title"]
     pull_request_title = "[Backport {}] {}".format(branch, title)
