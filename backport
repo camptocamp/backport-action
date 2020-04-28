@@ -124,7 +124,7 @@ def backport(number, branch):
                 commands.append("git cherry-pick " + commit_sha)
                 check_call(["git", "reset", "--hard",], cwd=workspace)
     if failed:
-        commands.append("git push origin {} -f".format(backport_branch))
+        commands.append("git push origin {} --force".format(backport_branch))
         with open("BACKPORT_TODO", "w") as f:
             f.write("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
