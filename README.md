@@ -22,3 +22,9 @@ jobs:
 ```
 
 And for each pull request that needs to be backported to branch `<branch>` add a `backport <branch>` label on the pull request.
+
+It's also usefull to add in all jobs of your main continus integration workflow:
+
+```yaml
+    if: "!startsWith(github.event.head_commit.message, '[skip ci] ')"
+```
