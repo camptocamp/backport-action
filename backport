@@ -143,7 +143,9 @@ def backport(number, branch):
     pull_request_title = "[Backport {}] {}".format(branch, title)
     pull_request_body = "Backport of #{}".format(number)
     if failed:
-        pull_request_body += "\n\nError on cherry picking, to continue do:\n{}".format("\n".join(commands))
+        pull_request_body += "\n\nError on cherry picking:\n{}\n\nTo continue do:\n{}".format(
+            error, "\n".join(commands)
+        )
     pull_request = {
         "title": pull_request_title,
         "body": pull_request_body,
