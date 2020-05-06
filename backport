@@ -206,7 +206,6 @@ def main():
     if state == "closed" and login == "github-actions[bot]":
         print("Delete branch")
         delete(event["pull_request"]["head"]["ref"])
-        sys.exit(0)
 
     if not merged:
         print("Pull request not merged")
