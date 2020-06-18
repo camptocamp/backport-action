@@ -1,8 +1,8 @@
-name: 'Pull request backport via label'
-description: 'Backport pull request based on backport label'
+name: Backport all Pull request
+description: Backport all kind of pull request by adding a label
 branding:
   icon: corner-left-down
-  color: gray-dark
+  color: blue
 inputs:
   token:
     default: ${{ github.token }}
