@@ -35,9 +35,9 @@ def backport(number, branch):
     backport_branch = "backport/{}-to-{}".format(number, branch)
 
     refs = event["repository"]["url"]
+    url = "{}/git/ref/heads/{}".format(refs, backport_branch)
     responce = requests.get(
-        "{}/git/ref/heads/{}".format(refs, backport_branch),
-        headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+        url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if responce.ok:
         print("The branch {} allready exists.")
@@ -45,7 +45,7 @@ def backport(number, branch):
 
     if responce.status_code != 404:
         print(responce.text)
-        fail("Error getting the branch {}:\n{}".format(backport_branch, responce.text))
+        fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, responce.text))
         sys.exit(1)
 
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
