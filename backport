@@ -191,6 +191,7 @@ def main():
     global event
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as event_file:
         event = json.loads(event_file.read())
+    print(len(os.environ["INPUT_TOKEN"]))
     print("Event")
     print(event)
     print()
