@@ -120,9 +120,7 @@ def backport(number, branch):
                 error = "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
                     branch, commits_sha, e.stderr.decode(), e.stdout.decode()
                 )
-                commands.append("git fetch")
-                commands.append("git checkout " + backport_branch)
-                commands.append("git reset --hard HEAD^")
+                commands.append("git fetch && git checkout " + backport_branch + " && git reset --hard HEAD^")
                 commands.append("git cherry-pick " + commit_sha)
                 check_call(["git", "reset", "--hard",], cwd=workspace)
     if failed:
