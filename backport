@@ -15,6 +15,7 @@ auth_header = "Bearer {}".format(os.environ["INPUT_TOKEN"])
 
 
 def fail(message):
+    print("Fail with message: " + message)
     responce = requests.post(
         event["pull_request"]["_links"]["comments"]["href"],
         json={"body": message},
@@ -25,13 +26,12 @@ def fail(message):
         },
     )
     if not responce.ok:
-        print(message)
         print("---")
         print(responce.text)
 
 
 def backport(number, branch):
-    print("::debug::Backporting pull request #{} to branch {}".format(number, branch))
+    print("Backporting pull request #{} to branch {}".format(number, branch))
 
     repository = event["repository"]["clone_url"]
     backport_branch = "backport/{}-to-{}".format(number, branch)
@@ -46,7 +46,6 @@ def backport(number, branch):
         return
 
     if responce.status_code != 404:
-        print(responce.text)
         fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, responce.text))
         sys.exit(1)
 
@@ -176,7 +175,6 @@ def delete(ref):
         print("Branch {} does not exists anymore".format(ref))
         return
     if not responce.ok:
-        print(responce.text)
         fail("Error getting the branch {}:\n{}".format(ref, responce.text))
         sys.exit(1)
 
@@ -185,7 +183,6 @@ def delete(ref):
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not responce.ok:
-        print(responce.text)
         fail("Fail to delete {}:\n{}".format(ref, responce.text))
         sys.exit(1)
 
