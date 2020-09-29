@@ -28,6 +28,7 @@ def fail(message):
     if not responce.ok:
         print("---")
         print(responce.text)
+    sys.exit(1)
 
 
 def backport(number, branch):
@@ -47,7 +48,6 @@ def backport(number, branch):
 
     if responce.status_code != 404:
         fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, responce.text))
-        sys.exit(1)
 
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
 
@@ -176,7 +176,6 @@ def delete(ref):
         return
     if not responce.ok:
         fail("Error getting the branch {}:\n{}".format(ref, responce.text))
-        sys.exit(1)
 
     responce = requests.delete(
         "{}/git/refs/heads/{}".format(refs, ref),
@@ -184,7 +183,6 @@ def delete(ref):
     )
     if not responce.ok:
         fail("Fail to delete {}:\n{}".format(ref, responce.text))
-        sys.exit(1)
 
 
 def main():
