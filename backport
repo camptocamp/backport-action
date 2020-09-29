@@ -25,6 +25,8 @@ def fail(message):
         },
     )
     if not responce.ok:
+        print(message)
+        print("---")
         print(responce.text)
 
 
