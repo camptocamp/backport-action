@@ -1,5 +1,5 @@
 name: Backport all Pull request
-description: Backport all kind of pull request by adding a label
+description: Backport all kind of pull request by adding a label, with support of cross-project backport.
 branding:
   icon: corner-left-down
   color: blue
