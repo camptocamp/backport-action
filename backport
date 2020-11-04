@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+from os import unlink
 import re
 import sys
 import traceback
@@ -31,13 +32,28 @@ def fail(message):
     sys.exit(1)
 
 
-def backport(number, branch):
-    print("Backporting pull request #{} to branch {}".format(number, branch))
-
-    repository = event["repository"]["clone_url"]
+def backport(number, branch, repo=None):
     backport_branch = "backport/{}-to-{}".format(number, branch)
+    auth = "http.extraheader=Authorization: basic {}".format(
+        base64.b64encode(("x-access-token:" + os.environ["INPUT_TOKEN"]).encode()).decode()
+    )
+    src_workspace = dst_workspace = os.environ["GITHUB_WORKSPACE"]
+    if not os.path.exists(src_workspace) or not os.listdir(src_workspace):
+        check_call(["git", "clone", "-c", auth, event["repository"]["clone_url"], src_workspace])
 
-    refs = event["repository"]["url"]
+    if repo:
+        print("Backporting pull request #{} to branch {} on reposotory".format(number, branch, repo))
+        repository = "https://github.com/{}.git".format(repo)
+        refs = "https://api.github.com/repos/{}".format(repo)
+
+        dst_workspace = "/tmp/" + repo
+        if not os.path.exists(dst_workspace) or not os.listdir(dst_workspace):
+            check_call(["git", "clone", "-c", auth, repository, dst_workspace])
+    else:
+        print("Backporting pull request #{} to branch {}".format(number, branch))
+        repository = event["repository"]["clone_url"]
+        refs = event["repository"]["url"]
+
     url = "{}/git/ref/heads/{}".format(refs, backport_branch)
     responce = requests.get(
         url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
@@ -70,21 +86,31 @@ def backport(number, branch):
             raise Exception(responce.text)
         commits_sha = [c["sha"] for c in responce.json()]
 
-    auth = "http.extraheader=Authorization: basic {}".format(
-        base64.b64encode(("x-access-token:" + os.environ["INPUT_TOKEN"]).encode()).decode()
-    )
-
-    workspace = os.environ["GITHUB_WORKSPACE"]
-    if not os.path.exists(workspace) or not os.listdir(workspace):
-        check_call(["git", "clone", "-c", auth, repository, workspace])
-    check_call(["git", "checkout", branch], cwd=workspace)
-    check_call(["git", "checkout", "-b", backport_branch], cwd=workspace)
+    check_call(["git", "checkout", "-b", backport_branch, branch], cwd=dst_workspace)
     failed = False
     commands = []
     error = None
     for commit_sha in commits_sha:
+        patch_file = os.path.join(dst_workspace, commit_sha + ".patch")
+        if repo:
+            with open(patch_file) as dest:
+                dest.write(
+                    check_output(["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace)
+                )
         if failed:
-            commands.append("git cherry-pick " + commit_sha)
+            if repo:
+                commands.append("git apply --3way --index {}.patch".format(commit_sha))
+                commands.append("rm {}.patch".format(commit_sha))
+                commands.append(
+                    'git commit --message=""'.format(
+                        check_output(
+                            ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
+                            cwd=src_workspace,
+                        )
+                    )
+                )
+            else:
+                commands.append("git cherry-pick " + commit_sha)
         else:
             try:
                 check_call(
@@ -95,10 +121,10 @@ def backport(number, branch):
                         "user.email",
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha],
-                            cwd=workspace,
+                            cwd=src_workspace,
                         ),
                     ],
-                    cwd=workspace,
+                    cwd=dst_workspace,
                 )
                 check_call(
                     [
@@ -108,32 +134,68 @@ def backport(number, branch):
                         "user.name",
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha],
-                            cwd=workspace,
+                            cwd=src_workspace,
                         ),
                     ],
-                    cwd=workspace,
+                    cwd=dst_workspace,
                 )
-                check_output(["git", "cherry-pick", commit_sha], cwd=workspace, stderr=PIPE)
+                if repo:
+                    check_call(["git", "apply", "--3way", "--index", patch_file], cwd=dst_workspace)
+                    check_call(
+                        [
+                            "git",
+                            "commit",
+                            "--message="
+                            + check_output(
+                                ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
+                                cwd=src_workspace,
+                            ),
+                        ],
+                        cwd=dst_workspace,
+                    )
+                    os.unlink(patch_file)
+                else:
+                    check_call(["git", "cherry-pick", commit_sha], cwd=dst_workspace, stderr=PIPE)
             except CalledProcessError as e:
                 failed = True
                 error = "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
                     branch, commits_sha, e.stderr.decode(), e.stdout.decode()
                 )
-                commands.append("git fetch && git checkout " + backport_branch + " && git reset --hard HEAD^")
-                commands.append("git cherry-pick " + commit_sha)
-                check_call(["git", "reset", "--hard",], cwd=workspace)
+                if repo:
+                    commands.append(
+                        "git fetch && git checkout " + backport_branch + " && git reset --mixed HEAD^"
+                    )
+                    commands.append("rm BACKPORT_TODO")
+                    check_call(["git", "add", patch_file])
+                    commands.append("git apply --3way --index {}.patch".format(commit_sha))
+                    commands.append("rm {}.patch".format(commit_sha))
+                    commands.append(
+                        'git commit --message=""'.format(
+                            check_output(
+                                ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
+                                cwd=src_workspace,
+                            )
+                        )
+                    )
+                else:
+                    commands.append(
+                        "git fetch && git checkout " + backport_branch + " && git reset --hard HEAD^"
+                    )
+                    commands.append("git cherry-pick " + commit_sha)
+                check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     if failed:
         commands.append("git push origin {} --force".format(backport_branch))
         with open("BACKPORT_TODO", "w") as f:
             f.write("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
-            ["git", "add", "BACKPORT_TODO"], cwd=workspace,
+            ["git", "add", "BACKPORT_TODO"], cwd=dst_workspace,
         )
         check_call(
-            ["git", "commit", "--message=[skip ci] Add instructions to finish the backport"], cwd=workspace,
+            ["git", "commit", "--message=[skip ci] Add instructions to finish the backport"],
+            cwd=dst_workspace,
         )
     check_call(
-        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=workspace,
+        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=dst_workspace,
     )
 
     title = event["pull_request"]["title"]
@@ -212,19 +274,38 @@ def main():
         print("Pull request not merged")
         sys.exit(0)
 
-    label_re = re.compile(r"backport (.+)")
+    label_re = re.compile(r"^backport (.+)$")
+    label_tag_re = re.compile(r"^(?:.* )?backport ([^ ]+)$")
+    label_repo_re = re.compile(r"^(?:.* )?backport ([^ ]+) ([^ ]+)$")
+    label_match = None
     for label in labels:
         try:
             # label needs to be `backport <name of the branch>`
             label_match = label_re.match(label)
             if label_match is not None:
-                print("Backport to branch " + label)
-                backport(number, label_match.group(1))
+                url = "{}/labels/{}".format(event["repository"]["url"], label)
+                responce = requests.get(
+                    url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+                )
+                responce.raise_for_status()
+                description = responce.json().get("description", "")
+                match_tag = label_tag_re.match(description)
+                match_repo = label_repo_re.match(description)
+                if not match_tag and not match_repo:
+                    match_tag = label_tag_re.match(label)
+                    match_repo = label_repo_re.match(label)
+
+                if match_tag:
+                    print("Backport to branch {}".format(match_tag.group(1)))
+                    backport(number, match_tag.group(1))
+                elif match_repo:
+                    print("Backport to branch {} on {}".format(match_repo.group(2), match_repo.group(1)))
+                    backport(number, match_repo.group(2), match_repo.group(1))
         except Exception:
             traceback.print_exception(*sys.exc_info())
             fail(
                 "Error on backporting to branch {}, see Docker Hub actions for more information.".format(
-                    label_match.group(1)
+                    label_match.group(1) if label_match else "<no match>"
                 )
             )
 

@@ -29,6 +29,11 @@ jobs:
 And for each pull request that needs to be backported to branch `<branch>` add a `backport <branch>` label
 on the pull request.
 
+For cross project backport use `backport <repo> <branch>`.
+
+You can also put it in the label description, in this case the label should start with `backport `,
+and the description should follows this pattern: `(<desc> )?backport (<repo> )?<branch>`.
+
 It's also useful to add in all jobs of your main continuous integration workflow:
 
 ```yaml
