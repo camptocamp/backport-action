@@ -86,7 +86,8 @@ def backport(number, branch, repo=None):
             raise Exception(responce.text)
         commits_sha = [c["sha"] for c in responce.json()]
 
-    check_call(["git", "checkout", "-b", backport_branch, branch], cwd=dst_workspace)
+    check_call(["git", "checkout", branch], cwd=dst_workspace)
+    check_call(["git", "checkout", "-b", backport_branch], cwd=dst_workspace)
     failed = False
     commands = []
     error = None
