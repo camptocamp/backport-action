@@ -127,7 +127,7 @@ def backport(number, branch, repo=None):
                 dest.write(
                     check_output(
                         ["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace
-                    ).decode()
+                    ).decode("utf-8")
                 )
         if failed:
             if repo:
