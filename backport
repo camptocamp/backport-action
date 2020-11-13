@@ -6,6 +6,7 @@ import codecs
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import traceback
@@ -207,11 +208,15 @@ def backport(number, branch, repo=None):
                     e.stdout.decode() if e.stdout is not None else "",
                 )
                 if repo:
+                    shutil.copyfile(patch_file, os.path.join("/tmp", "{}.patch".format(commit_sha)))
+                    check_call(["git", "reset", "--hard"], cwd=dst_workspace)
+                    shutil.copyfile(os.path.join("/tmp", "{}.patch".format(commit_sha)), patch_file)
+                    check_call(["git", "add", "{}.patch".format(commit_sha)], cwd=dst_workspace)
+
                     commands.append(
                         "git fetch && git checkout " + backport_branch + " && git reset --mixed HEAD^"
                     )
                     commands.append("rm BACKPORT_TODO")
-                    check_call(["git", "add", "{}.patch".format(commit_sha)], cwd=dst_workspace)
                     commands.append("git apply --3way --index {}.patch".format(commit_sha))
                     commands.append("rm {}.patch".format(commit_sha))
                     commands.append(
@@ -229,6 +234,7 @@ def backport(number, branch, repo=None):
                         "git fetch && git checkout " + backport_branch + " && git reset --hard HEAD^"
                     )
                     commands.append("git cherry-pick " + commit_sha)
+                    check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     if failed:
         commands.append("git push origin {} --force".format(backport_branch))
         with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
@@ -240,7 +246,6 @@ def backport(number, branch, repo=None):
             ["git", "commit", "--message=[skip ci] Add instructions to finish the backport"],
             cwd=dst_workspace,
         )
-        check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     check_call(
         ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=dst_workspace,
     )
