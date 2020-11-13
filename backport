@@ -140,7 +140,9 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode()
+                        )
+                        .decode()
+                        .strip()
                     )
                 )
             else:
@@ -156,7 +158,9 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode(),
+                        )
+                        .decode()
+                        .strip(),
                     ],
                     cwd=dst_workspace,
                 )
@@ -169,7 +173,9 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode(),
+                        )
+                        .decode()
+                        .strip(),
                     ],
                     cwd=dst_workspace,
                 )
@@ -183,7 +189,9 @@ def backport(number, branch, repo=None):
                             + check_output(
                                 ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                                 cwd=src_workspace,
-                            ).decode(),
+                            )
+                            .decode()
+                            .strip(),
                         ],
                         cwd=dst_workspace,
                     )
@@ -211,7 +219,9 @@ def backport(number, branch, repo=None):
                             check_output(
                                 ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                                 cwd=src_workspace,
-                            ).decode()
+                            )
+                            .decode()
+                            .strip()
                         )
                     )
                 else:
