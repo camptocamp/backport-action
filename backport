@@ -222,7 +222,7 @@ def backport(number, branch, repo=None):
                 check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     if failed:
         commands.append("git push origin {} --force".format(backport_branch))
-        with open("BACKPORT_TODO", "w") as f:
+        with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
             f.write("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
             ["git", "add", "BACKPORT_TODO"], cwd=dst_workspace,
