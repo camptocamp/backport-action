@@ -30,7 +30,7 @@ def check_call(cmd, **kwargs):
 
 def check_output(cmd, **kwargs):
     print_cmd(cmd, kwargs)
-    subprocess.check_output(cmd, **kwargs)
+    return subprocess.check_output(cmd, **kwargs)
 
 
 def fail(message):
