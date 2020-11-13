@@ -15,15 +15,21 @@ event = None
 auth_header = "Bearer {}".format(os.environ["INPUT_TOKEN"])
 
 
-def check_call(cmd, **kwargs):
-    print("+ " + " ".join(cmd))
+def print_cmd(cmd, kwargs):
+    if 'cwd' in kwargs:
+        print("+ {}: {}".format(kwargs['cwd'], " ".join(cmd))
+    else:
+        print("+ {}".format(" ".join(cmd))
     sys.stdout.flush()
+
+
+def check_call(cmd, **kwargs):
+    print_cmd(cmd, kwargs)
     subprocess.check_call(cmd, **kwargs)
 
 
 def check_output(cmd, **kwargs):
-    print("+ " + " ".join(cmd))
-    sys.stdout.flush()
+    print_cmd(cmd, kwargs)
     subprocess.check_output(cmd, **kwargs)
 
 
@@ -119,7 +125,7 @@ def backport(number, branch, repo=None):
         if repo:
             with open(patch_file, "w") as dest:
                 dest.write(
-                    check_output(["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace)
+                    check_output(["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace).decode()
                 )
         if failed:
             if repo:
