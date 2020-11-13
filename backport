@@ -251,7 +251,9 @@ def backport(number, branch, repo=None):
     }
 
     responce = requests.post(
-        event["repository"]["url"] + "/pulls",
+        (event["repository"]["url"] + "/pulls")
+        if repo is None
+        else "https://api.github.com/repos/{}/pulls".format(repo),
         json=pull_request,
         headers={
             "Accept": "application/vnd.github.v3+json",
