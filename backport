@@ -3,11 +3,11 @@
 import base64
 import json
 import os
-from os import unlink
 import re
+import subprocess
 import sys
 import traceback
-from subprocess import PIPE, CalledProcessError, check_call, check_output
+from subprocess import PIPE, CalledProcessError
 
 import requests
 
@@ -15,8 +15,21 @@ event = None
 auth_header = "Bearer {}".format(os.environ["INPUT_TOKEN"])
 
 
+def check_call(cmd, **kwargs):
+    print("+ " + " ".join(cmd))
+    sys.stdout.flush()
+    subprocess.check_call(cmd, **kwargs)
+
+
+def check_output(cmd, **kwargs):
+    print("+ " + " ".join(cmd))
+    sys.stdout.flush()
+    subprocess.check_output(cmd, **kwargs)
+
+
 def fail(message):
     print("Fail with message: " + message)
+    sys.stdout.flush()
     responce = requests.post(
         event["pull_request"]["_links"]["comments"]["href"],
         json={"body": message},
@@ -29,6 +42,7 @@ def fail(message):
     if not responce.ok:
         print("---")
         print(responce.text)
+        sys.stdout.flush()
     sys.exit(1)
 
 
@@ -42,7 +56,8 @@ def backport(number, branch, repo=None):
         check_call(["git", "clone", "-c", auth, event["repository"]["clone_url"], src_workspace])
 
     if repo:
-        print("Backporting pull request #{} to branch {} on reposotory".format(number, branch, repo))
+        print("Backporting pull request #{} to branch {} on reposotory {}".format(number, branch, repo))
+        sys.stdout.flush()
         repository = "https://github.com/{}.git".format(repo)
         refs = "https://api.github.com/repos/{}".format(repo)
 
@@ -51,6 +66,7 @@ def backport(number, branch, repo=None):
             check_call(["git", "clone", "-c", auth, repository, dst_workspace])
     else:
         print("Backporting pull request #{} to branch {}".format(number, branch))
+        sys.stdout.flush()
         repository = event["repository"]["clone_url"]
         refs = event["repository"]["url"]
 
@@ -60,6 +76,7 @@ def backport(number, branch, repo=None):
     )
     if responce.ok:
         print("The branch {} allready exists.")
+        sys.stdout.flush()
         return
 
     if responce.status_code != 404:
@@ -73,6 +90,7 @@ def backport(number, branch, repo=None):
     )
     if not responce.ok:
         print(responce.text)
+        sys.stdout.flush()
         raise Exception(responce.text)
     if len(responce.json()["parents"]) == 1:
         commits_sha = [merge_commit_sha]
@@ -83,6 +101,7 @@ def backport(number, branch, repo=None):
         )
         if not responce.ok:
             print(responce.text)
+            sys.stdout.flush()
             raise Exception(responce.text)
         commits_sha = [c["sha"] for c in responce.json()]
 
@@ -103,7 +122,7 @@ def backport(number, branch, repo=None):
                 commands.append("git apply --3way --index {}.patch".format(commit_sha))
                 commands.append("rm {}.patch".format(commit_sha))
                 commands.append(
-                    'git commit --message=""'.format(
+                    'git commit --message="{}"'.format(
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                             cwd=src_workspace,
@@ -171,7 +190,7 @@ def backport(number, branch, repo=None):
                     commands.append("git apply --3way --index {}.patch".format(commit_sha))
                     commands.append("rm {}.patch".format(commit_sha))
                     commands.append(
-                        'git commit --message=""'.format(
+                        'git commit --message="{}"'.format(
                             check_output(
                                 ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                                 cwd=src_workspace,
@@ -225,6 +244,7 @@ def backport(number, branch, repo=None):
     )
     if not responce.ok:
         print(responce.text)
+        sys.stdout.flush()
 
 
 def delete(ref):
@@ -236,6 +256,7 @@ def delete(ref):
     )
     if responce.status_code == 404:
         print("Branch {} does not exists anymore".format(ref))
+        sys.stdout.flush()
         return
     if not responce.ok:
         fail("Error getting the branch {}:\n{}".format(ref, responce.text))
@@ -254,6 +275,7 @@ def main():
         event = json.loads(event_file.read())
     if "INPUT_TOKEN" not in os.environ:
         print("Missing credentials")
+        sys.stdout.flush()
         sys.exit(1)
     if len(os.environ["INPUT_TOKEN"]) == 0:
         print("Unable to upgrade from a fork or empty credential")
@@ -261,6 +283,7 @@ def main():
     print("Event")
     print(event)
     print()
+    sys.stdout.flush()
     number = event["number"]
     state = event["pull_request"]["state"]
     login = event["pull_request"]["user"]["login"]
@@ -269,10 +292,12 @@ def main():
 
     if state == "closed" and login == "github-actions[bot]":
         print("Delete branch")
+        sys.stdout.flush()
         delete(event["pull_request"]["head"]["ref"])
 
     if not merged:
         print("Pull request not merged")
+        sys.stdout.flush()
         sys.exit(0)
 
     label_re = re.compile(r"^backport (.+)$")
@@ -298,9 +323,11 @@ def main():
 
                 if match_tag:
                     print("Backport to branch {}".format(match_tag.group(1)))
+                    sys.stdout.flush()
                     backport(number, match_tag.group(1))
                 elif match_repo:
                     print("Backport to branch {} on {}".format(match_repo.group(2), match_repo.group(1)))
+                    sys.stdout.flush()
                     backport(number, match_repo.group(2), match_repo.group(1))
         except Exception:
             traceback.print_exception(*sys.exc_info())
@@ -311,4 +338,5 @@ def main():
             )
 
 
-main()
+if __name__ == "__main__":
+    main()
