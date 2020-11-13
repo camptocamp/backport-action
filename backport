@@ -211,7 +211,7 @@ def backport(number, branch, repo=None):
                         "git fetch && git checkout " + backport_branch + " && git reset --mixed HEAD^"
                     )
                     commands.append("rm BACKPORT_TODO")
-                    check_call(["git", "add", patch_file], cwd=dst_workspace)
+                    check_call(["git", "add", "{}.patch".format(commit_sha)], cwd=dst_workspace)
                     commands.append("git apply --3way --index {}.patch".format(commit_sha))
                     commands.append("rm {}.patch".format(commit_sha))
                     commands.append(
