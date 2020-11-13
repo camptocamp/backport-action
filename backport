@@ -127,7 +127,7 @@ def backport(number, branch, repo=None):
             with codecs.open(patch_file, "w", "utf-8") as dest:
                 dest.write(
                     check_output(
-                        ["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace
+                        ["git", "--no-pager", "show", "--no-color", "--patch", commit_sha], cwd=src_workspace
                     ).decode("utf-8")
                 )
         if failed:
