@@ -53,7 +53,7 @@ def backport(number, branch, repo=None):
     )
     src_workspace = dst_workspace = os.environ["GITHUB_WORKSPACE"]
     if not os.path.exists(src_workspace) or not os.listdir(src_workspace):
-        print("+ git clone -c *** {} {}".format(event["repository"]["clone_url"], src_workspace)
+        print("+ git clone -c *** {} {}".format(event["repository"]["clone_url"], src_workspace))
         sys.stdout.flush()
         subprocess.check_call(["git", "clone", "-c", auth, event["repository"]["clone_url"], src_workspace])
 
@@ -65,7 +65,7 @@ def backport(number, branch, repo=None):
 
         dst_workspace = "/tmp/" + repo
         if not os.path.exists(dst_workspace) or not os.listdir(dst_workspace):
-            print("+ git clone -c *** {} {}".format(repository, dst_workspace)
+            print("+ git clone -c *** {} {}".format(repository, dst_workspace))
             sys.stdout.flush()
             subprocess.check_call(["git", "clone", "-c", auth, repository, dst_workspace])
     else:
@@ -117,7 +117,7 @@ def backport(number, branch, repo=None):
     for commit_sha in commits_sha:
         patch_file = os.path.join(dst_workspace, commit_sha + ".patch")
         if repo:
-            with open(patch_file, 'w') as dest:
+            with open(patch_file, "w") as dest:
                 dest.write(
                     check_output(["git", "--no-pager", "show", "--patch", commit_sha], cwd=src_workspace)
                 )
