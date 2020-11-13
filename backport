@@ -229,7 +229,6 @@ def backport(number, branch, repo=None):
                         "git fetch && git checkout " + backport_branch + " && git reset --hard HEAD^"
                     )
                     commands.append("git cherry-pick " + commit_sha)
-                check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     if failed:
         commands.append("git push origin {} --force".format(backport_branch))
         with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
@@ -241,13 +240,18 @@ def backport(number, branch, repo=None):
             ["git", "commit", "--message=[skip ci] Add instructions to finish the backport"],
             cwd=dst_workspace,
         )
+        check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     check_call(
         ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=dst_workspace,
     )
 
     title = event["pull_request"]["title"]
     pull_request_title = "[Backport {}] {}".format(branch, title)
-    pull_request_body = "Backport of #{}".format(number)
+    pull_request_body = (
+        "Backport of {}#{}".format(event["repository"]["full_name"], number)
+        if repo
+        else "Backport of #{}".format(number)
+    )
     if failed:
         pull_request_body += "\n\nError on cherry picking:\n{}\n\nTo continue do:\n{}".format(
             error, "\n".join(commands)
