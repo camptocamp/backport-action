@@ -128,7 +128,7 @@ def backport(number, branch, repo=None):
                 dest.write(
                     check_output(
                         ["git", "--no-pager", "show", "--no-color", "--patch", commit_sha], cwd=src_workspace
-                    ).decode("utf-8")
+                    ).decode()
                 )
         if failed:
             if repo:
@@ -139,7 +139,7 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode("utf-8")
+                        ).decode()
                     )
                 )
             else:
@@ -155,7 +155,7 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%ae", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode("utf-8"),
+                        ).decode(),
                     ],
                     cwd=dst_workspace,
                 )
@@ -168,7 +168,7 @@ def backport(number, branch, repo=None):
                         check_output(
                             ["git", "--no-pager", "log", "--format=format:%an", "-n", "1", commit_sha],
                             cwd=src_workspace,
-                        ).decode("utf-8"),
+                        ).decode(),
                     ],
                     cwd=dst_workspace,
                 )
@@ -182,7 +182,7 @@ def backport(number, branch, repo=None):
                             + check_output(
                                 ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                                 cwd=src_workspace,
-                            ).decode("utf-8"),
+                            ).decode(),
                         ],
                         cwd=dst_workspace,
                     )
@@ -207,7 +207,7 @@ def backport(number, branch, repo=None):
                             check_output(
                                 ["git", "--no-pager", "log", "--format=format:%B", "-n", "1", commit_sha],
                                 cwd=src_workspace,
-                            ).decode("utf-8")
+                            ).decode()
                         )
                     )
                 else:
