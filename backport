@@ -202,7 +202,7 @@ def backport(number, branch, repo=None):
                 failed = True
                 error = "Error on backporting to branch {}, error on cherry picking {}:\n{}\n{}".format(
                     branch,
-                    commits_sha,
+                    commit_sha,
                     e.stderr.decode() if e.stderr is not None else "",
                     e.stdout.decode() if e.stdout is not None else "",
                 )
