@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Backport closed pull request
     steps:
-      - uses: sbrunner/backport-action@v1
+      - uses: sbrunner/backport-action@v1.0.0
         with:
           token: ${{ secrets.BACKPORT_GITHUB_TOKEN }}
 ```
