@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Backport closed pull request
     steps:
-      - uses: sbrunner/backport-action@v1.0.0
+      - uses: sbrunner/backport-action@v2.0.0
         with:
           token: ${{ secrets.BACKPORT_GITHUB_TOKEN }}
 ```
@@ -43,3 +43,10 @@ It's also useful to add in all jobs of your main continuous integration workflow
 To don't run the CI on failed backport.
 
 On failed backport a pullrequest is also open with the instructions to ends the backport as a comment.
+
+# Changlog
+
+v2.0.0
+
+* Add support of cross project backport
+* Add support of getting informations from the label description
