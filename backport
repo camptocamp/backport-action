@@ -39,7 +39,7 @@ def check_output(cmd, **kwargs):
 def fail(message):
     print("Fail with message: " + message)
     sys.stdout.flush()
-    responce = requests.post(
+    response = requests.post(
         event["pull_request"]["_links"]["comments"]["href"],
         json={"body": message},
         headers={
@@ -48,9 +48,9 @@ def fail(message):
             "Content-Type": "application/json",
         },
     )
-    if not responce.ok:
+    if not response.ok:
         print("---")
-        print(responce.text)
+        print(response.text)
         sys.stdout.flush()
     sys.exit(1)
 
@@ -84,39 +84,40 @@ def backport(number, branch, repo=None):
         refs = event["repository"]["url"]
 
     url = "{}/git/ref/heads/{}".format(refs, backport_branch)
-    responce = requests.get(
-        url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+    response = requests.get(
+        url,
+        headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
-    if responce.ok:
+    if response.ok:
         print("The branch {} allready exists.")
         sys.stdout.flush()
         return
 
-    if responce.status_code != 404:
-        fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, responce.text))
+    if response.status_code != 404:
+        fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, response.text))
 
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
 
-    responce = requests.get(
+    response = requests.get(
         event["repository"]["git_commits_url"].format(**{"/sha": "/" + merge_commit_sha}),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
-    if not responce.ok:
-        print(responce.text)
+    if not response.ok:
+        print(response.text)
         sys.stdout.flush()
-        raise Exception(responce.text)
-    if len(responce.json()["parents"]) == 1:
+        raise Exception(response.text)
+    if len(response.json()["parents"]) == 1:
         commits_sha = [merge_commit_sha]
     else:
-        responce = requests.get(
+        response = requests.get(
             event["pull_request"]["_links"]["commits"]["href"],
             headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
         )
-        if not responce.ok:
-            print(responce.text)
+        if not response.ok:
+            print(response.text)
             sys.stdout.flush()
-            raise Exception(responce.text)
-        commits_sha = [c["sha"] for c in responce.json()]
+            raise Exception(response.text)
+        commits_sha = [c["sha"] for c in response.json()]
 
     check_call(["git", "checkout", branch], cwd=dst_workspace)
     check_call(["git", "checkout", "-b", backport_branch], cwd=dst_workspace)
@@ -240,14 +241,16 @@ def backport(number, branch, repo=None):
         with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
             f.write("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
-            ["git", "add", "BACKPORT_TODO"], cwd=dst_workspace,
+            ["git", "add", "BACKPORT_TODO"],
+            cwd=dst_workspace,
         )
         check_call(
             ["git", "commit", "--message=[skip ci] Add instructions to finish the backport"],
             cwd=dst_workspace,
         )
     check_call(
-        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch], cwd=dst_workspace,
+        ["git", "-c", auth, "push", "--set-upstream", "origin", backport_branch],
+        cwd=dst_workspace,
     )
 
     title = event["pull_request"]["title"]
@@ -269,7 +272,7 @@ def backport(number, branch, repo=None):
         "maintainer_can_modify": True,
     }
 
-    responce = requests.post(
+    response = requests.post(
         (event["repository"]["url"] + "/pulls")
         if repo is None
         else "https://api.github.com/repos/{}/pulls".format(repo),
@@ -280,31 +283,31 @@ def backport(number, branch, repo=None):
             "Content-Type": "application/json",
         },
     )
-    if not responce.ok:
-        print(responce.text)
+    if not response.ok:
+        print(response.text)
         sys.stdout.flush()
 
 
 def delete(ref):
     refs = event["repository"]["url"]
 
-    responce = requests.get(
+    response = requests.get(
         "{}/git/ref/heads/{}".format(refs, ref),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
-    if responce.status_code == 404:
+    if response.status_code == 404:
         print("Branch {} does not exists anymore".format(ref))
         sys.stdout.flush()
         return
-    if not responce.ok:
-        fail("Error getting the branch {}:\n{}".format(ref, responce.text))
+    if not response.ok:
+        fail("Error getting the branch {}:\n{}".format(ref, response.text))
 
-    responce = requests.delete(
+    response = requests.delete(
         "{}/git/refs/heads/{}".format(refs, ref),
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
-    if not responce.ok:
-        fail("Fail to delete {}:\n{}".format(ref, responce.text))
+    if not response.ok:
+        fail("Fail to delete {}:\n{}".format(ref, response.text))
 
 
 def main():
@@ -348,11 +351,12 @@ def main():
             label_match = label_re.match(label)
             if label_match is not None:
                 url = "{}/labels/{}".format(event["repository"]["url"], label)
-                responce = requests.get(
-                    url, headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
+                response = requests.get(
+                    url,
+                    headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
                 )
-                responce.raise_for_status()
-                description = responce.json().get("description", "")
+                response.raise_for_status()
+                description = response.json().get("description", "")
                 match_tag = label_tag_re.match(description)
                 match_repo = label_repo_re.match(description)
                 if not match_tag and not match_repo:

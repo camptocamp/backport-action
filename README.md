@@ -42,11 +42,11 @@ It's also useful to add in all jobs of your main continuous integration workflow
 
 To don't run the CI on failed backport.
 
-On failed backport a pullrequest is also open with the instructions to ends the backport as a comment.
+On failed backport a pull request is also open with the instructions to ends the backport as a comment.
 
-# Changlog
+# Changelog
 
 v2.0.0
 
 * Add support of cross project backport
-* Add support of getting informations from the label description
+* Add support of getting information from the label description
