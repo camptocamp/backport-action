@@ -30,6 +30,3 @@ jobs:
 
       - name: Build
         run: docker build --tag=${GITHUB_REPOSITORY} .
-
-      - name: Publish
-        run: c2cciutils-publish

@@ -89,7 +89,7 @@ def backport(number, branch, repo=None):
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if response.ok:
-        print("The branch {} allready exists.")
+        print("The branch {} already exists.")
         sys.stdout.flush()
         return
 
