@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Backport closed pull request
+    timeout-minutes: 5
+
     steps:
-    - uses: syndesisio/backport-action@master
+      - uses: syndesisio/backport-action@master
