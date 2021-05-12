@@ -329,6 +329,8 @@ def main():
     login = event["pull_request"]["user"]["login"]
     merged = event["pull_request"]["merged"]
     labels = [label["name"] for label in event["pull_request"]["labels"]]
+    if event["action"] == "labels":
+        labels = [event["label"]["name"]] if event["label"]["name"] in labels else []
 
     if state == "closed" and login == "github-actions[bot]":
         print("Delete branch")
