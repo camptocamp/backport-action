@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import codecs
 import json
@@ -55,34 +54,34 @@ def fail(message):
 
 
 def backport(number, branch, repo=None):
-    backport_branch = "backport/{}-to-{}".format(number, branch)
+    backport_branch = f"backport/{number}-to-{branch}"
     src_workspace = dst_workspace = os.environ["GITHUB_WORKSPACE"]
     if not os.path.exists(src_workspace) or not os.listdir(src_workspace):
         url = event["repository"]["clone_url"].replace(
             "https://github.com/", "https://{}@github.com/".format(os.environ["INPUT_TOKEN"])
         )
-        print("+ git clone {} {}".format(url, src_workspace))
+        print(f"+ git clone {url} {src_workspace}")
         sys.stdout.flush()
         subprocess.check_call(["git", "clone", url, src_workspace])
 
     if repo:
-        print("Backporting pull request #{} to branch {} on reposotory {}".format(number, branch, repo))
+        print(f"Backporting pull request #{number} to branch {branch} on reposotory {repo}")
         sys.stdout.flush()
         repository = "https://{}@github.com/{}.git".format(os.environ["INPUT_TOKEN"], repo)
-        refs = "https://api.github.com/repos/{}".format(repo)
+        refs = f"https://api.github.com/repos/{repo}"
 
         dst_workspace = "/tmp/" + repo
         if not os.path.exists(dst_workspace) or not os.listdir(dst_workspace):
-            print("+ git clone {} {}".format(repository, dst_workspace))
+            print(f"+ git clone {repository} {dst_workspace}")
             sys.stdout.flush()
             subprocess.check_call(["git", "clone", repository, dst_workspace])
     else:
-        print("Backporting pull request #{} to branch {}".format(number, branch))
+        print(f"Backporting pull request #{number} to branch {branch}")
         sys.stdout.flush()
         repository = event["repository"]["clone_url"]
         refs = event["repository"]["url"]
 
-    url = "{}/git/ref/heads/{}".format(refs, backport_branch)
+    url = f"{refs}/git/ref/heads/{backport_branch}"
     response = requests.get(
         url,
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
@@ -93,7 +92,7 @@ def backport(number, branch, repo=None):
         return
 
     if response.status_code != 404:
-        fail("Error getting the branch {}:\n{}:\n{}".format(backport_branch, url, response.text))
+        fail(f"Error getting the branch {backport_branch}:\n{url}:\n{response.text}")
 
     merge_commit_sha = event["pull_request"]["merge_commit_sha"]
 
@@ -134,8 +133,8 @@ def backport(number, branch, repo=None):
                 )
         if failed:
             if repo:
-                commands.append("git apply --3way --index {}.patch".format(commit_sha))
-                commands.append("rm {}.patch".format(commit_sha))
+                commands.append(f"git apply --3way --index {commit_sha}.patch")
+                commands.append(f"rm {commit_sha}.patch")
                 commands.append(
                     'git commit --message="{}"'.format(
                         check_output(
@@ -208,17 +207,17 @@ def backport(number, branch, repo=None):
                     e.stdout.decode() if e.stdout is not None else "",
                 )
                 if repo:
-                    shutil.copyfile(patch_file, os.path.join("/tmp", "{}.patch".format(commit_sha)))
+                    shutil.copyfile(patch_file, os.path.join("/tmp", f"{commit_sha}.patch"))
                     check_call(["git", "reset", "--hard"], cwd=dst_workspace)
-                    shutil.copyfile(os.path.join("/tmp", "{}.patch".format(commit_sha)), patch_file)
-                    check_call(["git", "add", "{}.patch".format(commit_sha)], cwd=dst_workspace)
+                    shutil.copyfile(os.path.join("/tmp", f"{commit_sha}.patch"), patch_file)
+                    check_call(["git", "add", f"{commit_sha}.patch"], cwd=dst_workspace)
 
                     commands.append(
                         "git fetch && git checkout " + backport_branch + " && git reset --mixed HEAD^"
                     )
                     commands.append("rm BACKPORT_TODO")
-                    commands.append("git apply --3way --index {}.patch".format(commit_sha))
-                    commands.append("rm {}.patch".format(commit_sha))
+                    commands.append(f"git apply --3way --index {commit_sha}.patch")
+                    commands.append(f"rm {commit_sha}.patch")
                     commands.append(
                         'git commit --message="{}"'.format(
                             check_output(
@@ -236,7 +235,7 @@ def backport(number, branch, repo=None):
                     commands.append("git cherry-pick " + commit_sha)
                     check_call(["git", "reset", "--hard"], cwd=dst_workspace)
     if failed:
-        commands.append("git push origin {} --force".format(backport_branch))
+        commands.append(f"git push origin {backport_branch} --force")
         with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
             f.write("{}\n\nto continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
@@ -253,11 +252,11 @@ def backport(number, branch, repo=None):
     )
 
     title = event["pull_request"]["title"]
-    pull_request_title = "[Backport {}] {}".format(branch, title)
+    pull_request_title = f"[Backport {branch}] {title}"
     pull_request_body = (
         "Backport of {}#{}".format(event["repository"]["full_name"], number)
         if repo
-        else "Backport of #{}".format(number)
+        else f"Backport of #{number}"
     )
     if failed:
         pull_request_body += "\n\nError on cherry picking:\n{}\n\nTo continue do:\n{}".format(
@@ -274,7 +273,7 @@ def backport(number, branch, repo=None):
     response = requests.post(
         (event["repository"]["url"] + "/pulls")
         if repo is None
-        else "https://api.github.com/repos/{}/pulls".format(repo),
+        else f"https://api.github.com/repos/{repo}/pulls",
         json=pull_request,
         headers={
             "Accept": "application/vnd.github.v3+json",
@@ -291,22 +290,22 @@ def delete(ref):
     refs = event["repository"]["url"]
 
     response = requests.get(
-        "{}/git/ref/heads/{}".format(refs, ref),
+        f"{refs}/git/ref/heads/{ref}",
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if response.status_code == 404:
-        print("Branch {} does not exists anymore".format(ref))
+        print(f"Branch {ref} does not exists anymore")
         sys.stdout.flush()
         return
     if not response.ok:
-        fail("Error getting the branch {}:\n{}".format(ref, response.text))
+        fail(f"Error getting the branch {ref}:\n{response.text}")
 
     response = requests.delete(
-        "{}/git/refs/heads/{}".format(refs, ref),
+        f"{refs}/git/refs/heads/{ref}",
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if not response.ok:
-        fail("Fail to delete {}:\n{}".format(ref, response.text))
+        fail(f"Fail to delete {ref}:\n{response.text}")
 
 
 def main():
@@ -365,11 +364,11 @@ def main():
                     match_repo = label_repo_re.match(label)
 
                 if match_tag:
-                    print("Backport to branch {}".format(match_tag.group(1)))
+                    print(f"Backport to branch {match_tag.group(1)}")
                     sys.stdout.flush()
                     backport(number, match_tag.group(1))
                 elif match_repo:
-                    print("Backport to branch {} on {}".format(match_repo.group(2), match_repo.group(1)))
+                    print(f"Backport to branch {match_repo.group(2)} on {match_repo.group(1)}")
                     sys.stdout.flush()
                     backport(number, match_repo.group(2), match_repo.group(1))
         except Exception:
