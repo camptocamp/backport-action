@@ -37,7 +37,7 @@ and the description should follows this pattern: `(<desc> )?backport (<repo> )?<
 It's also useful to add in all jobs of your main continuous integration workflow:
 
 ```yaml
-    if: "!startsWith(github.event.head_commit.message, '[skip ci] ')"
+if: "!startsWith(github.event.head_commit.message, '[skip ci] ')"
 ```
 
 To don't run the CI on failed backport.
@@ -48,5 +48,5 @@ On failed backport a pull request is also open with the instructions to ends the
 
 v2.0.0
 
-* Add support of cross project backport
-* Add support of getting information from the label description
+- Add support of cross project backport
+- Add support of getting information from the label description
