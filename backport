@@ -237,7 +237,7 @@ def backport(number, branch, repo=None):
     if failed:
         commands.append(f"git push origin {backport_branch} --force")
         with open(os.path.join(dst_workspace, "BACKPORT_TODO"), "w") as f:
-            f.write("{}\n\not continue do:\n{}\n".format(error, "\n".join(commands)))
+            f.write("{}\n\nTo continue do:\n{}\n".format(error, "\n".join(commands)))
         check_call(
             ["git", "add", "BACKPORT_TODO"],
             cwd=dst_workspace,
@@ -259,7 +259,7 @@ def backport(number, branch, repo=None):
         else f"Backport of #{number}"
     )
     if failed:
-        pull_request_body += "\n\nError on cherry picking:\n{}\n\not continue do:\n{}".format(
+        pull_request_body += "\n\nError on cherry picking:\n{}\n\nTo continue do:\n{}".format(
             error, "\n".join(commands)
         )
     pull_request = {
