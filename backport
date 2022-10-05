@@ -54,7 +54,7 @@ def fail(message):
     sys.exit(1)
 
 
-def backport(number, branch, non_matching_labels: List[str], repo=None):
+def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
     backport_branch = f"backport/{number}-to-{branch}"
     src_workspace = dst_workspace = os.environ["GITHUB_WORKSPACE"]
     if not os.path.exists(src_workspace) or not os.listdir(src_workspace):
@@ -285,21 +285,22 @@ def backport(number, branch, non_matching_labels: List[str], repo=None):
     if not response.ok:
         print(response.text)
         sys.stdout.flush()
-    else:
-        pr_id = response.json()[0]["id"]
-        response = requests.post(
-                (event["repository"]["url"] + f"/issues/{pr_id}/labels")
-                if repo is None
-                else f"https://api.github.com/repos/{repo}/issues/{pr_id}/labels",
-                json={
-                    "labels": non_matching_labels
-                },
-                headers={
-                    "Accept": "application/vnd.github.v3+json",
-                    "Authorization": auth_header,
-                    "Content-Type": "application/json",
-                },
-            )
+        return False
+
+    pr_id = response.json()[0]["id"]
+    response = requests.post(
+        (event["repository"]["url"] + f"/issues/{pr_id}/labels")
+        if repo is None
+        else f"https://api.github.com/repos/{repo}/issues/{pr_id}/labels",
+        json={"labels": non_matching_labels},
+        headers={
+            "Accept": "application/vnd.github.v3+json",
+            "Authorization": auth_header,
+            "Content-Type": "application/json",
+        },
+    )
+    return True
+
 
 def delete(ref):
     refs = event["repository"]["url"]
@@ -363,6 +364,7 @@ def main():
     non_matching_labels = [label for label in labels if not label_re.match(label)]
     for label in labels:
         try:
+            success = False
             # label needs to be `backport <name of the branch>`
             label_match = label_re.match(label)
             if label_match is not None:
@@ -382,11 +384,23 @@ def main():
                 if match_tag:
                     print(f"Backport to branch {match_tag.group(1)}")
                     sys.stdout.flush()
-                    backport(number, match_tag.group(1), non_matching_labels)
+                    success = backport(number, match_tag.group(1), non_matching_labels)
                 elif match_repo:
                     print(f"Backport to branch {match_repo.group(2)} on {match_repo.group(1)}")
                     sys.stdout.flush()
-                    backport(number, match_repo.group(2), non_matching_labels, match_repo.group(1))
+                    success = backport(number, match_repo.group(2), non_matching_labels, match_repo.group(1))
+
+                # Delete the label on success
+                if success:
+                    response = requests.delete(
+                        event["repository"]["url"] + f"/issues/{number}/labels/{label}",
+                        headers={
+                            "Accept": "application/vnd.github.v3+json",
+                            "Authorization": auth_header,
+                            "Content-Type": "application/json",
+                        },
+                    )
+
         except Exception:
             traceback.print_exception(*sys.exc_info())
             fail(
