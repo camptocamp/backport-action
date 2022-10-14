@@ -299,6 +299,9 @@ def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
             "Content-Type": "application/json",
         },
     )
+    if not response.ok:
+        print(response.text)
+        sys.stdout.flush()
     return True
 
 
