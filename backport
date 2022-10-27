@@ -287,13 +287,12 @@ def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
         sys.stdout.flush()
         return False
 
-    print(response.json())
-    pr_id = response.json()["id"]
-    print(f"Add labels {','.join(non_matching_labels)} to pull request id: {pr_id}.")
+    pr_number = response.json()["number"]
+    print(f"Add labels {','.join(non_matching_labels)} to pull request number: {pr_number}.")
     response = requests.post(
-        (event["repository"]["url"] + f"/issues/{pr_id}/labels")
+        (event["repository"]["url"] + f"/issues/{pr_number}/labels")
         if repo is None
-        else f"https://api.github.com/repos/{repo}/issues/{pr_id}/labels",
+        else f"https://api.github.com/repos/{repo}/issues/{pr_number}/labels",
         json={"labels": non_matching_labels},
         headers={
             "Accept": "application/vnd.github+json",
