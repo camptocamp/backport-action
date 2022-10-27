@@ -287,8 +287,8 @@ def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
         sys.stdout.flush()
         return False
 
-    print(f"Add labels {','.join(non_matching_labels)} to pull request id: {pr_id}.")
     pr_id = response.json()["id"]
+    print(f"Add labels {','.join(non_matching_labels)} to pull request id: {pr_id}.")
     response = requests.post(
         (event["repository"]["url"] + f"/issues/{pr_id}/labels")
         if repo is None
