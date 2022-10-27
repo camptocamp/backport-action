@@ -88,7 +88,7 @@ def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
         headers={"Accept": "application/vnd.github.v3+json", "Authorization": auth_header},
     )
     if response.ok:
-        print("The branch {} already exists.")
+        print(f"The branch {backport_branch} already exists.")
         sys.stdout.flush()
         return
 
@@ -295,7 +295,7 @@ def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
         else f"https://api.github.com/repos/{repo}/issues/{pr_id}/labels",
         json={"labels": non_matching_labels},
         headers={
-            "Accept": "application/vnd.github.v3+json",
+            "Accept": "application/vnd.github+json",
             "Authorization": auth_header,
             "Content-Type": "application/json",
         },
