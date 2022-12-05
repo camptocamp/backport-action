@@ -1,5 +1,0 @@
-checks:
-  required_workflows:
-    clean.yaml: False
-    audit.yaml: False
-    backport.yaml: False
