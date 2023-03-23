@@ -50,3 +50,12 @@ v2.0.0
 
 - Add support of cross project backport
 - Add support of getting information from the label description
+
+## Contributing
+
+Install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install --allow-missing-config
+```
