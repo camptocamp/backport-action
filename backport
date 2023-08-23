@@ -9,7 +9,6 @@ import subprocess
 import sys
 import traceback
 from subprocess import PIPE, CalledProcessError
-from typing import List
 
 import requests
 
@@ -54,7 +53,7 @@ def fail(message):
     sys.exit(1)
 
 
-def backport(number, branch, non_matching_labels: List[str], repo=None) -> bool:
+def backport(number, branch, non_matching_labels: list[str], repo=None) -> bool:
     backport_branch = f"backport/{number}-to-{branch}"
     src_workspace = dst_workspace = os.environ["GITHUB_WORKSPACE"]
     if not os.path.exists(src_workspace) or not os.listdir(src_workspace):
