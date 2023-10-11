@@ -40,8 +40,8 @@ jobs:
       - run: pre-commit run --all-files
       - run: git diff && false
         if: failure()
-      - name: Checks
-        run: c2cciutils-checks
+      - name: Print environment information
+        run: c2cciutils-env
 
       - name: Build
         run: docker build --tag=${GITHUB_REPOSITORY} .
