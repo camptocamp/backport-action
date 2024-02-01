@@ -271,9 +271,11 @@ def backport(number, branch, non_matching_labels: list[str], repo=None) -> bool:
     }
 
     response = requests.post(
-        (event["repository"]["url"] + "/pulls")
-        if repo is None
-        else f"https://api.github.com/repos/{repo}/pulls",
+        (
+            (event["repository"]["url"] + "/pulls")
+            if repo is None
+            else f"https://api.github.com/repos/{repo}/pulls"
+        ),
         json=pull_request,
         headers={
             "Accept": "application/vnd.github.v3+json",
@@ -289,9 +291,11 @@ def backport(number, branch, non_matching_labels: list[str], repo=None) -> bool:
     pr_number = response.json()["number"]
     print(f"Add labels {','.join(non_matching_labels)} to pull request number: {pr_number}.")
     response = requests.post(
-        (event["repository"]["url"] + f"/issues/{pr_number}/labels")
-        if repo is None
-        else f"https://api.github.com/repos/{repo}/issues/{pr_number}/labels",
+        (
+            (event["repository"]["url"] + f"/issues/{pr_number}/labels")
+            if repo is None
+            else f"https://api.github.com/repos/{repo}/issues/{pr_number}/labels"
+        ),
         json={"labels": non_matching_labels},
         headers={
             "Accept": "application/vnd.github+json",
