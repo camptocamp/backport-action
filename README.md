@@ -2,7 +2,7 @@
 
 GitHub Action to backport pull requests.
 
-If you want that your CI runs on the new Pull request you should generate your own tocken in a secret
+If you want that your CI runs on the new Pull request you should generate your own token in a secret
 e.g. named `BACKPORT_GITHUB_TOKEN`.
 
 Put this in your `.github/workflows/backport.yml`:
