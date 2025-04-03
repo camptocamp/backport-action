@@ -10,4 +10,5 @@
     'github>camptocamp/gs-renovate-config-preset:json-schema.json5#1.0.1',
     'github>camptocamp/gs-renovate-config-preset:shellcheck.json5#1.0.1',
   ],
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
 }
